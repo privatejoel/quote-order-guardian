@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Upload, FileText, CheckCircle, AlertTriangle, Download, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,8 @@ import { useDocumentAnalysis } from '@/hooks/useDocumentAnalysis';
 const Index = () => {
   const [poFile, setPOFile] = useState<File | null>(null);
   const [quoteFile, setQuoteFile] = useState<File | null>(null);
+  const poFileInputRef = useRef<HTMLInputElement>(null);
+  const quoteFileInputRef = useRef<HTMLInputElement>(null);
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   
@@ -71,6 +73,14 @@ const Index = () => {
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
       handleFileUpload(files[0], type);
+    }
+  };
+
+  const handleChooseFile = (type: 'po' | 'quote') => {
+    if (type === 'po') {
+      poFileInputRef.current?.click();
+    } else {
+      quoteFileInputRef.current?.click();
     }
   };
 
@@ -164,15 +174,15 @@ const Index = () => {
                     <Upload className="h-8 w-8 text-gray-400" />
                     <p className="text-gray-600">Drag & drop PO file here</p>
                     <input
+                      ref={poFileInputRef}
                       type="file"
                       accept=".pdf"
                       onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'po')}
                       className="hidden"
-                      id="po-upload"
                     />
-                    <label htmlFor="po-upload">
-                      <Button variant="outline" className="cursor-pointer">Choose File</Button>
-                    </label>
+                    <Button variant="outline" onClick={() => handleChooseFile('po')}>
+                      Choose File
+                    </Button>
                   </div>
                 )}
               </div>
@@ -206,15 +216,15 @@ const Index = () => {
                     <Upload className="h-8 w-8 text-gray-400" />
                     <p className="text-gray-600">Drag & drop Quote file here</p>
                     <input
+                      ref={quoteFileInputRef}
                       type="file"
                       accept=".pdf"
                       onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0], 'quote')}
                       className="hidden"
-                      id="quote-upload"
                     />
-                    <label htmlFor="quote-upload">
-                      <Button variant="outline" className="cursor-pointer">Choose File</Button>
-                    </label>
+                    <Button variant="outline" onClick={() => handleChooseFile('quote')}>
+                      Choose File
+                    </Button>
                   </div>
                 )}
               </div>
@@ -255,10 +265,8 @@ const Index = () => {
           </Card>
         )}
 
-        {/* Results Section */}
         {analysisStatus === 'complete' && analysisResult && (
           <div className="space-y-6">
-            {/* Summary Card */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -308,7 +316,6 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            {/* Line Items Comparison */}
             <Card>
               <CardHeader>
                 <CardTitle>Line Items Comparison</CardTitle>
@@ -361,7 +368,6 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            {/* Terms & Conditions Comparison */}
             <Card>
               <CardHeader>
                 <CardTitle>Terms & Conditions Analysis</CardTitle>
@@ -393,7 +399,6 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            {/* Action Buttons */}
             <div className="flex justify-center gap-4">
               <Button variant="outline" size="lg">
                 Send Amendment Request
