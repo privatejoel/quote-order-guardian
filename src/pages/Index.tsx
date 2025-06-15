@@ -1,52 +1,44 @@
 
 import React, { useState } from 'react';
-import { Upload, FileText, CheckCircle, AlertTriangle, Download } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertTriangle, Download, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-
-interface LineItem {
-  id: string;
-  description: string;
-  partCode: string;
-  unitPrice: number;
-  quantity: number;
-  totalPrice: number;
-}
-
-interface ComparisonResult {
-  lineItems: {
-    poItem: LineItem;
-    quoteItem: LineItem | null;
-    status: 'matched' | 'mismatched' | 'missing';
-    issues: string[];
-    priceVariance?: number;
-  }[];
-  termsComparison: {
-    category: string;
-    poTerm: string;
-    quoteTerm: string;
-    status: 'matched' | 'mismatched' | 'missing';
-    risk: 'low' | 'medium' | 'high';
-  }[];
-  summary: {
-    totalMatched: number;
-    totalMismatched: number;
-    recommendation: 'accept' | 'amend';
-    amendmentText?: string[];
-  };
-}
+import { useAuth } from '@/components/auth/AuthProvider';
+import { AuthForm } from '@/components/auth/AuthForm';
+import { Header } from '@/components/Header';
+import { useDocumentAnalysis } from '@/hooks/useDocumentAnalysis';
 
 const Index = () => {
   const [poFile, setPOFile] = useState<File | null>(null);
   const [quoteFile, setQuoteFile] = useState<File | null>(null);
-  const [analysisStatus, setAnalysisStatus] = useState<'idle' | 'uploading' | 'analyzing' | 'complete'>('idle');
-  const [progress, setProgress] = useState(0);
-  const [comparisonResult, setComparisonResult] = useState<ComparisonResult | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  
+  const {
+    analysisStatus,
+    progress,
+    analysisResult,
+    analyzePOAndQuote,
+    savePOToDatabase
+  } = useDocumentAnalysis();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthForm />;
+  }
 
   const handleFileUpload = (file: File, type: 'po' | 'quote') => {
     if (file.type !== 'application/pdf') {
@@ -92,114 +84,13 @@ const Index = () => {
       return;
     }
 
-    setAnalysisStatus('analyzing');
-    setProgress(0);
-
-    // Simulate analysis progress
-    const progressInterval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + 10;
-      });
-    }, 300);
-
-    // Simulate API call with mock data
-    setTimeout(() => {
-      setProgress(100);
-      setAnalysisStatus('complete');
-      
-      // Mock comparison result
-      const mockResult: ComparisonResult = {
-        lineItems: [
-          {
-            poItem: {
-              id: '1',
-              description: 'Hydraulic Pump Assembly',
-              partCode: 'IL0-0100',
-              unitPrice: 38000,
-              quantity: 2,
-              totalPrice: 76000
-            },
-            quoteItem: {
-              id: '1',
-              description: 'Hydraulic Pump Assembly',
-              partCode: 'IL0-0100',
-              unitPrice: 36080,
-              quantity: 2,
-              totalPrice: 72160
-            },
-            status: 'mismatched',
-            issues: ['Unit price mismatch'],
-            priceVariance: 5.3
-          },
-          {
-            poItem: {
-              id: '2',
-              description: 'Control Valve Set',
-              partCode: 'CV-2400',
-              unitPrice: 15000,
-              quantity: 4,
-              totalPrice: 60000
-            },
-            quoteItem: {
-              id: '2',
-              description: 'Control Valve Set',
-              partCode: 'CV-2400',
-              unitPrice: 15000,
-              quantity: 4,
-              totalPrice: 60000
-            },
-            status: 'matched',
-            issues: []
-          }
-        ],
-        termsComparison: [
-          {
-            category: 'Payment Terms',
-            poTerm: '30 days net',
-            quoteTerm: '45 days net',
-            status: 'mismatched',
-            risk: 'medium'
-          },
-          {
-            category: 'Delivery Terms',
-            poTerm: 'DDP Destination',
-            quoteTerm: 'EXW Factory',
-            status: 'mismatched',
-            risk: 'high'
-          },
-          {
-            category: 'Warranty',
-            poTerm: '24 months',
-            quoteTerm: '12 months',
-            status: 'mismatched',
-            risk: 'low'
-          }
-        ],
-        summary: {
-          totalMatched: 1,
-          totalMismatched: 1,
-          recommendation: 'amend',
-          amendmentText: [
-            'Revise unit price for Part IL0-0100 to ₹36,080.00 as per our quote dated April 24.',
-            'Confirm payment terms as 45 days net as originally quoted.',
-            'Clarify delivery terms - original quote was EXW Factory, PO shows DDP Destination.'
-          ]
-        }
-      };
-
-      setComparisonResult(mockResult);
-      clearInterval(progressInterval);
-    }, 3000);
+    await analyzePOAndQuote(poFile, quoteFile);
   };
 
   const exportJSON = () => {
-    if (!comparisonResult) return;
+    if (!analysisResult) return;
     
-    const dataStr = JSON.stringify(comparisonResult, null, 2);
+    const dataStr = JSON.stringify(analysisResult, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     
     const exportFileDefaultName = `po_quote_analysis_${new Date().toISOString().split('T')[0]}.json`;
@@ -231,10 +122,11 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      
+      <div className="max-w-7xl mx-auto p-6">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">PO-Quote Validator</h1>
           <p className="text-gray-600">Upload your Purchase Order and Quote to validate terms, pricing, and identify discrepancies.</p>
         </div>
 
@@ -359,41 +251,47 @@ const Index = () => {
         )}
 
         {/* Results Section */}
-        {analysisStatus === 'complete' && comparisonResult && (
+        {analysisStatus === 'complete' && analysisResult && (
           <div className="space-y-6">
             {/* Summary Card */}
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Analysis Summary</CardTitle>
-                  <Button onClick={exportJSON} variant="outline" size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Export JSON
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button onClick={savePOToDatabase} variant="outline" size="sm">
+                      <Save className="h-4 w-4 mr-2" />
+                      Save to DB
+                    </Button>
+                    <Button onClick={exportJSON} variant="outline" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Export JSON
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-3 gap-6 mb-6">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{comparisonResult.summary.totalMatched}</div>
+                    <div className="text-2xl font-bold text-green-600">{analysisResult.summary.totalMatched}</div>
                     <div className="text-sm text-gray-600">Matched Items</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">{comparisonResult.summary.totalMismatched}</div>
+                    <div className="text-2xl font-bold text-red-600">{analysisResult.summary.totalMismatched}</div>
                     <div className="text-sm text-gray-600">Mismatched Items</div>
                   </div>
                   <div className="text-center">
-                    <Badge className={comparisonResult.summary.recommendation === 'accept' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                      {comparisonResult.summary.recommendation === 'accept' ? 'ACCEPTABLE' : 'AMENDMENT REQUIRED'}
+                    <Badge className={analysisResult.summary.recommendation === 'accept' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                      {analysisResult.summary.recommendation === 'accept' ? 'ACCEPTABLE' : 'AMENDMENT REQUIRED'}
                     </Badge>
                   </div>
                 </div>
 
-                {comparisonResult.summary.amendmentText && (
+                {analysisResult.summary.amendmentText && (
                   <div>
                     <h4 className="font-semibold mb-3">Recommended Amendments:</h4>
                     <ul className="space-y-2">
-                      {comparisonResult.summary.amendmentText.map((text, index) => (
+                      {analysisResult.summary.amendmentText.map((text, index) => (
                         <li key={index} className="flex items-start gap-2">
                           <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
                           <span className="text-sm">{text}</span>
@@ -425,13 +323,13 @@ const Index = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {comparisonResult.lineItems.map((item, index) => (
+                      {analysisResult.lineItemsComparison.map((item, index) => (
                         <tr key={index} className="border-b hover:bg-gray-50">
                           <td className="p-3">{getStatusIcon(item.status)}</td>
-                          <td className="p-3 font-mono text-sm">{item.poItem.partCode}</td>
-                          <td className="p-3">{item.poItem.description}</td>
-                          <td className="p-3">₹{item.poItem.unitPrice.toLocaleString()}</td>
-                          <td className="p-3">₹{item.quoteItem?.unitPrice.toLocaleString() || 'N/A'}</td>
+                          <td className="p-3 font-mono text-sm">{item.poItem.customer_part_number}</td>
+                          <td className="p-3">{item.poItem.item_description}</td>
+                          <td className="p-3">₹{item.poItem.unit_price?.toLocaleString()}</td>
+                          <td className="p-3">₹{item.quoteItem?.quoted_unit_price?.toLocaleString() || 'N/A'}</td>
                           <td className="p-3">
                             {item.priceVariance && (
                               <span className={item.priceVariance > 0 ? 'text-red-600' : 'text-green-600'}>
@@ -440,9 +338,9 @@ const Index = () => {
                             )}
                           </td>
                           <td className="p-3">
-                            {item.issues.length > 0 && (
+                            {item.issues?.length > 0 && (
                               <div className="space-y-1">
-                                {item.issues.map((issue, issueIndex) => (
+                                {item.issues.map((issue: string, issueIndex: number) => (
                                   <Badge key={issueIndex} variant="outline" className="text-xs">
                                     {issue}
                                   </Badge>
@@ -465,7 +363,7 @@ const Index = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {comparisonResult.termsComparison.map((term, index) => (
+                  {analysisResult.termsComparison.map((term, index) => (
                     <div key={index} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="font-semibold">{term.category}</h4>
