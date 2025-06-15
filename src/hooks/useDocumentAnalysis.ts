@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Tables } from '@/integrations/supabase/types';
-import { parsePOPdf, parseQuotePdf, ParsedPOData, ParsedQuoteData } from '@/utils/pdfParser';
+import { extractDataFromPdf, ExtractedData } from '@/utils/simplePdfParser';
 
 type PurchaseOrder = Tables<'purchase_orders'>;
 type Quote = Tables<'quotes'>;
@@ -22,47 +22,99 @@ interface AnalysisResult {
 }
 
 export const useDocumentAnalysis = () => {
-  const [analysisStatus, setAnalysisStatus] = useState<'idle' | 'uploading' | 'analyzing' | 'complete'>('idle');
+  const [analysisStatus, setAnalysisStatus] = useState<'idle' | 'extracting' | 'validating' | 'analyzing' | 'complete'>('idle');
   const [progress, setProgress] = useState(0);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [extractedPOData, setExtractedPOData] = useState<ExtractedData | null>(null);
+  const [extractedQuoteData, setExtractedQuoteData] = useState<ExtractedData | null>(null);
+  const [validationStep, setValidationStep] = useState<'po' | 'quote' | 'analysis' | null>(null);
   const { toast } = useToast();
 
-  const analyzePOAndQuote = async (poFile: File, quoteFile: File) => {
+  const startExtraction = async (poFile: File, quoteFile: File) => {
+    setAnalysisStatus('extracting');
+    setProgress(0);
+
+    try {
+      // Extract data from PO
+      setProgress(25);
+      const poData = await extractDataFromPdf(poFile, 'po');
+      setExtractedPOData(poData);
+      
+      setProgress(50);
+      
+      // Extract data from Quote
+      const quoteData = await extractDataFromPdf(quoteFile, 'quote');
+      setExtractedQuoteData(quoteData);
+      
+      setProgress(75);
+      
+      // Move to validation step
+      setAnalysisStatus('validating');
+      setValidationStep('po');
+      setProgress(100);
+
+      toast({
+        title: "Data extracted successfully",
+        description: "Please review and validate the extracted data.",
+      });
+
+    } catch (error: any) {
+      console.error('Extraction error:', error);
+      toast({
+        title: "Extraction failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      setAnalysisStatus('idle');
+    }
+  };
+
+  const validatePOData = (validatedData: ExtractedData) => {
+    setExtractedPOData(validatedData);
+    setValidationStep('quote');
+    toast({
+      title: "PO data validated",
+      description: "Now validating quote data...",
+    });
+  };
+
+  const validateQuoteData = (validatedData: ExtractedData) => {
+    setExtractedQuoteData(validatedData);
+    setValidationStep('analysis');
+    
+    // Proceed with analysis
+    performAnalysis(extractedPOData!, validatedData);
+  };
+
+  const performAnalysis = async (poData: ExtractedData, quoteData: ExtractedData) => {
     setAnalysisStatus('analyzing');
     setProgress(0);
 
     try {
-      // Parse PDF files
-      setProgress(20);
-      const parsedPO = await parsePOPdf(poFile);
+      setProgress(30);
       
-      setProgress(40);
-      const parsedQuote = await parseQuotePdf(quoteFile);
+      // Compare the validated data
+      const comparison = compareExtractedData(poData, quoteData);
       
       setProgress(60);
-      
-      // Compare the extracted data
-      const comparison = comparePoAndQuote(parsedPO, parsedQuote);
-      
-      setProgress(80);
 
       // Create database objects
       const user = await supabase.auth.getUser();
       
       const purchaseOrder: PurchaseOrder = {
         id: crypto.randomUUID(),
-        po_number: parsedPO.poNumber,
-        po_received_date: parsedPO.poReceivedDate,
-        customer_name: parsedPO.customerName,
-        customer_code: parsedPO.customerCode || null,
+        po_number: poData.poNumber || `PO-${Date.now()}`,
+        po_received_date: poData.date || new Date().toISOString().split('T')[0],
+        customer_name: poData.customerName || 'Unknown Customer',
+        customer_code: poData.customerCode || null,
         customer_id: null,
-        quote_number: parsedQuote.quoteNumber,
+        quote_number: quoteData.quoteNumber || null,
         quote_id: null,
-        payment_terms: parsedPO.paymentTerms || null,
-        delivery_mode: parsedPO.deliveryMode || null,
-        requested_delivery_date: parsedPO.requestedDeliveryDate || null,
-        incoterms: parsedPO.incoterms || null,
-        warranty_terms: parsedPO.warrantyTerms || null,
+        payment_terms: poData.paymentTerms || null,
+        delivery_mode: poData.deliveryTerms || null,
+        requested_delivery_date: null,
+        incoterms: null,
+        warranty_terms: poData.warrantyTerms || null,
         cancellation_clause: null,
         force_majeure_clause: null,
         special_remarks: null,
@@ -78,19 +130,19 @@ export const useDocumentAnalysis = () => {
 
       const quote: Quote = {
         id: crypto.randomUUID(),
-        quote_number: parsedQuote.quoteNumber,
-        quote_date: parsedQuote.quoteDate,
-        customer_name: parsedQuote.customerName,
-        customer_code: parsedQuote.customerCode || null,
+        quote_number: quoteData.quoteNumber || `QT-${Date.now()}`,
+        quote_date: quoteData.date || new Date().toISOString().split('T')[0],
+        customer_name: quoteData.customerName || 'Unknown Customer',
+        customer_code: quoteData.customerCode || null,
         customer_id: null,
         offer_validity_until: null,
         sale_term: null,
         price_basis: null,
         quote_created_by: null,
-        delivery_condition: parsedQuote.deliveryTerms || null,
-        payment_terms: parsedQuote.paymentTerms || null,
+        delivery_condition: quoteData.deliveryTerms || null,
+        payment_terms: quoteData.paymentTerms || null,
         freight_inclusion_clause: null,
-        warranty_terms: parsedQuote.warrantyTerms || null,
+        warranty_terms: quoteData.warrantyTerms || null,
         cancellation_clause: null,
         force_majeure_clause: null,
         advance_payment_percent: null,
@@ -110,6 +162,7 @@ export const useDocumentAnalysis = () => {
 
       setProgress(100);
       setAnalysisStatus('complete');
+      setValidationStep(null);
       
       const result: AnalysisResult = {
         purchaseOrder,
@@ -120,6 +173,11 @@ export const useDocumentAnalysis = () => {
       };
 
       setAnalysisResult(result);
+
+      toast({
+        title: "Analysis complete",
+        description: "Review the comparison results below.",
+      });
 
     } catch (error: any) {
       console.error('Analysis error:', error);
@@ -132,15 +190,15 @@ export const useDocumentAnalysis = () => {
     }
   };
 
-  const comparePoAndQuote = (po: ParsedPOData, quote: ParsedQuoteData) => {
+  const compareExtractedData = (poData: ExtractedData, quoteData: ExtractedData) => {
     const lineItemsComparison: any[] = [];
     let matchedItems = 0;
     let mismatchedItems = 0;
 
     // Compare line items
-    po.lineItems.forEach(poItem => {
-      const quoteItem = quote.lineItems.find(qi => 
-        qi.partNumber.toLowerCase() === poItem.partNumber.toLowerCase()
+    poData.lineItems.forEach(poItem => {
+      const quoteItem = quoteData.lineItems.find(qi => 
+        qi.partNumber?.toLowerCase() === poItem.partNumber?.toLowerCase()
       );
 
       let status = 'matched';
@@ -153,22 +211,24 @@ export const useDocumentAnalysis = () => {
         mismatchedItems++;
       } else {
         // Check price variance
-        priceVariance = ((poItem.unitPrice - quoteItem.quotedUnitPrice) / quoteItem.quotedUnitPrice) * 100;
-        
-        if (Math.abs(priceVariance) > 5) {
-          status = 'mismatched';
-          issues.push('Price variance exceeds 5%');
-          mismatchedItems++;
-        } else if (Math.abs(priceVariance) > 0) {
-          status = 'price_deviation';
-          issues.push('Minor price difference');
-          matchedItems++;
-        } else {
-          matchedItems++;
+        if (poItem.unitPrice && quoteItem.unitPrice) {
+          priceVariance = ((poItem.unitPrice - quoteItem.unitPrice) / quoteItem.unitPrice) * 100;
+          
+          if (Math.abs(priceVariance) > 5) {
+            status = 'mismatched';
+            issues.push('Price variance exceeds 5%');
+            mismatchedItems++;
+          } else if (Math.abs(priceVariance) > 0) {
+            status = 'price_deviation';
+            issues.push('Minor price difference');
+            matchedItems++;
+          } else {
+            matchedItems++;
+          }
         }
 
         // Check quantity
-        if (poItem.quantity !== quoteItem.quotedQuantity) {
+        if (poItem.quantity !== quoteItem.quantity) {
           status = 'mismatched';
           issues.push('Quantity mismatch');
         }
@@ -176,19 +236,19 @@ export const useDocumentAnalysis = () => {
 
       lineItemsComparison.push({
         poItem: {
-          line_item_number: poItem.lineNumber,
-          customer_part_number: poItem.partNumber,
-          item_description: poItem.description,
-          unit_price: poItem.unitPrice,
-          po_quantity: poItem.quantity,
-          total_price: poItem.totalPrice
+          line_item_number: lineItemsComparison.length + 1,
+          customer_part_number: poItem.partNumber || '',
+          item_description: poItem.description || '',
+          unit_price: poItem.unitPrice || 0,
+          po_quantity: poItem.quantity || 0,
+          total_price: poItem.totalPrice || (poItem.unitPrice && poItem.quantity ? poItem.unitPrice * poItem.quantity : 0)
         },
         quoteItem: quoteItem ? {
-          line_item_number: quoteItem.lineNumber,
-          part_number: quoteItem.partNumber,
-          part_name: quoteItem.partName,
-          quoted_unit_price: quoteItem.quotedUnitPrice,
-          quoted_quantity: quoteItem.quotedQuantity
+          line_item_number: lineItemsComparison.length + 1,
+          part_number: quoteItem.partNumber || '',
+          part_name: quoteItem.description || '',
+          quoted_unit_price: quoteItem.unitPrice || 0,
+          quoted_quantity: quoteItem.quantity || 0
         } : null,
         status,
         issues,
@@ -199,23 +259,23 @@ export const useDocumentAnalysis = () => {
     // Compare terms
     const termsComparison: any[] = [];
     
-    if (po.paymentTerms && quote.paymentTerms) {
+    if (poData.paymentTerms && quoteData.paymentTerms) {
       termsComparison.push({
         category: 'Payment Terms',
-        poTerm: po.paymentTerms,
-        quoteTerm: quote.paymentTerms,
-        status: po.paymentTerms.toLowerCase() === quote.paymentTerms.toLowerCase() ? 'matched' : 'mismatched',
-        risk: po.paymentTerms.toLowerCase() === quote.paymentTerms.toLowerCase() ? 'low' : 'medium'
+        poTerm: poData.paymentTerms,
+        quoteTerm: quoteData.paymentTerms,
+        status: poData.paymentTerms.toLowerCase() === quoteData.paymentTerms.toLowerCase() ? 'matched' : 'mismatched',
+        risk: poData.paymentTerms.toLowerCase() === quoteData.paymentTerms.toLowerCase() ? 'low' : 'medium'
       });
     }
 
-    if (po.warrantyTerms && quote.warrantyTerms) {
+    if (poData.warrantyTerms && quoteData.warrantyTerms) {
       termsComparison.push({
         category: 'Warranty Terms',
-        poTerm: po.warrantyTerms,
-        quoteTerm: quote.warrantyTerms,
-        status: po.warrantyTerms.toLowerCase() === quote.warrantyTerms.toLowerCase() ? 'matched' : 'mismatched',
-        risk: po.warrantyTerms.toLowerCase() === quote.warrantyTerms.toLowerCase() ? 'low' : 'medium'
+        poTerm: poData.warrantyTerms,
+        quoteTerm: quoteData.warrantyTerms,
+        status: poData.warrantyTerms.toLowerCase() === quoteData.warrantyTerms.toLowerCase() ? 'matched' : 'mismatched',
+        risk: poData.warrantyTerms.toLowerCase() === quoteData.warrantyTerms.toLowerCase() ? 'low' : 'medium'
       });
     }
 
@@ -244,6 +304,14 @@ export const useDocumentAnalysis = () => {
         amendmentText: amendmentText.length > 0 ? amendmentText : undefined
       }
     };
+  };
+
+  const cancelValidation = () => {
+    setAnalysisStatus('idle');
+    setValidationStep(null);
+    setExtractedPOData(null);
+    setExtractedQuoteData(null);
+    setProgress(0);
   };
 
   const savePOToDatabase = async () => {
@@ -281,7 +349,7 @@ export const useDocumentAnalysis = () => {
 
       toast({
         title: "Success",
-        description: "Purchase Order saved to database with extracted data",
+        description: "Purchase Order saved to database with validated data",
       });
 
       return data;
@@ -299,7 +367,13 @@ export const useDocumentAnalysis = () => {
     analysisStatus,
     progress,
     analysisResult,
-    analyzePOAndQuote,
+    extractedPOData,
+    extractedQuoteData,
+    validationStep,
+    startExtraction,
+    validatePOData,
+    validateQuoteData,
+    cancelValidation,
     savePOToDatabase
   };
 };
