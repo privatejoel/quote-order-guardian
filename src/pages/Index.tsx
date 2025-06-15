@@ -78,11 +78,16 @@ const Index = () => {
     if (!poFile || !quoteFile) {
       toast({
         title: "Missing files",
-        description: "Please upload both Purchase Order and Quote files.",
+        description: "Please upload both Purchase Order and Quote PDF files.",
         variant: "destructive",
       });
       return;
     }
+
+    toast({
+      title: "Starting PDF Analysis",
+      description: "Extracting data from PDF documents...",
+    });
 
     await analyzePOAndQuote(poFile, quoteFile);
   };
