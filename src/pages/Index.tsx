@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, lazy, Suspense } from 'react';
 import { Upload, FileText, CheckCircle, AlertTriangle, Download, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,9 @@ import { useAuth } from '@/components/auth/AuthProvider';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { Header } from '@/components/Header';
 import { useDocumentAnalysis } from '@/hooks/useDocumentAnalysis';
-import React, { lazy } from 'react';
+
+// Import the DataValidation component
+const DataValidation = lazy(() => import('@/components/DataValidation').then(module => ({ default: module.DataValidation })));
 
 const Index = () => {
   const [poFile, setPOFile] = useState<File | null>(null);
@@ -142,9 +145,6 @@ const Index = () => {
     return <Badge className={colors[risk as keyof typeof colors]}>{risk.toUpperCase()}</Badge>;
   };
 
-  // Import the DataValidation component
-  const DataValidation = React.lazy(() => import('@/components/DataValidation').then(module => ({ default: module.DataValidation })));
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -156,7 +156,7 @@ const Index = () => {
 
         {/* Show validation step if in validating mode */}
         {analysisStatus === 'validating' && validationStep && (
-          <React.Suspense fallback={<div>Loading validation...</div>}>
+          <Suspense fallback={<div>Loading validation...</div>}>
             {validationStep === 'po' && extractedPOData && (
               <DataValidation
                 extractedData={extractedPOData}
@@ -173,7 +173,7 @@ const Index = () => {
                 onCancel={cancelValidation}
               />
             )}
-          </React.Suspense>
+          </Suspense>
         )}
 
         {/* Show file upload section only when not in validation mode */}
