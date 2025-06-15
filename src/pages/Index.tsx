@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Header } from '@/components/Header';
 import { useAuth } from '@/components/auth/AuthProvider';
@@ -62,12 +61,8 @@ const Index = () => {
           </div>
         </div>
       ) : (
-        <div className="flex items-center justify-center py-12">
-          <div className="max-w-md w-full mx-4">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-              <p className="text-gray-600">Sign in to access the document analysis tool</p>
-            </div>
+        <div className="flex items-center justify-center py-8 px-4">
+          <div className="w-full max-w-md">
             <AuthForm />
           </div>
         </div>
