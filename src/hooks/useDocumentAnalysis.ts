@@ -232,13 +232,15 @@ export const useDocumentAnalysis = () => {
       }
     });
 
+    const hasAmendments = mismatchedItems > 0 || termsComparison.some(t => t.status === 'mismatched');
+
     return {
       lineItems: lineItemsComparison,
       terms: termsComparison,
       summary: {
         totalMatched: matchedItems,
         totalMismatched: mismatchedItems,
-        recommendation: mismatchedItems > 0 || termsComparison.some(t => t.status === 'mismatched') ? 'amend' : 'accept',
+        recommendation: hasAmendments ? 'amend' as const : 'accept' as const,
         amendmentText: amendmentText.length > 0 ? amendmentText : undefined
       }
     };
@@ -258,7 +260,7 @@ export const useDocumentAnalysis = () => {
 
       // Save line items
       if (analysisResult.lineItemsComparison.length > 0) {
-        const lineItems = analysisResult.lineItemsComparison.map((comparison, index) => ({
+        const lineItems = analysisResult.lineItemsComparison.map((comparison) => ({
           po_id: data.id,
           line_item_number: comparison.poItem.line_item_number,
           customer_part_number: comparison.poItem.customer_part_number,
@@ -266,8 +268,8 @@ export const useDocumentAnalysis = () => {
           unit_price: comparison.poItem.unit_price,
           po_quantity: comparison.poItem.po_quantity,
           total_price: comparison.poItem.total_price,
-          match_status: comparison.status === 'matched' ? 'Matched' : 'Mismatch',
-          deviation_notes: comparison.issues.join(', ') || null
+          match_status: comparison.status === 'matched' ? 'Matched' as const : 'Mismatch' as const,
+          deviation_notes: comparison.issues.length > 0 ? comparison.issues.join(', ') : null
         }));
 
         const { error: lineItemsError } = await supabase
