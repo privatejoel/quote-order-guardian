@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Eye, FileText, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Calendar, Eye, FileText, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import { ProcessedPODetails } from '@/components/ProcessedPODetails';
 
 const ProcessedPOs = () => {
@@ -175,15 +175,193 @@ const ProcessedPOs = () => {
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <CardContent className="text-center py-8">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Processed POs Found</h3>
-              <p className="text-gray-500">
-                Upload and analyze your first PO to see the results here.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="space-y-6">
+            {/* Information Card */}
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-medium text-blue-900 mb-2">What you'll see after processing POs</h3>
+                    <p className="text-blue-800 text-sm">
+                      Once you upload and analyze purchase orders, this section will display comprehensive analysis results including match status, pricing comparisons, and detailed line-by-line breakdowns.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Sample Data Structure */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Sample Analysis Results
+                </CardTitle>
+                <CardDescription>
+                  Here's what your processed PO data will look like
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>PO Number</TableHead>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Quote Reference</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Received Date</TableHead>
+                      <TableHead>Line Items</TableHead>
+                      <TableHead>Overall Match</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* Sample Row 1 */}
+                    <TableRow className="opacity-60">
+                      <TableCell className="font-medium">PO-2024-001</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">ABC Manufacturing</div>
+                          <div className="text-sm text-gray-500">ABC001</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <FileText className="h-4 w-4 text-gray-400" />
+                          QT-2024-456
+                        </div>
+                      </TableCell>
+                      <TableCell><Badge variant="default">Accepted</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4 text-gray-400" />
+                          15/06/2024
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">12 items</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center text-green-600"><Minus className="h-4 w-4" /></div>
+                          <span className="text-sm">92% matched</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="outline" size="sm" disabled className="flex items-center gap-1">
+                          <Eye className="h-4 w-4" />
+                          View Details
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+
+                    {/* Sample Row 2 */}
+                    <TableRow className="opacity-60">
+                      <TableCell className="font-medium">PO-2024-002</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">XYZ Industries</div>
+                          <div className="text-sm text-gray-500">XYZ789</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <FileText className="h-4 w-4 text-gray-400" />
+                          QT-2024-123
+                        </div>
+                      </TableCell>
+                      <TableCell><Badge variant="secondary">Amendment Needed</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4 text-gray-400" />
+                          14/06/2024
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">8 items</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center text-yellow-600"><TrendingUp className="h-4 w-4" /></div>
+                          <span className="text-sm">75% matched</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="outline" size="sm" disabled className="flex items-center gap-1">
+                          <Eye className="h-4 w-4" />
+                          View Details
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+
+                    {/* Sample Row 3 */}
+                    <TableRow className="opacity-60">
+                      <TableCell className="font-medium">PO-2024-003</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">Global Corp</div>
+                          <div className="text-sm text-gray-500">GLC456</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-gray-400">No quote linked</span>
+                      </TableCell>
+                      <TableCell><Badge variant="outline">Under Review</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4 text-gray-400" />
+                          13/06/2024
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">5 items</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center text-red-600"><TrendingDown className="h-4 w-4" /></div>
+                          <span className="text-sm">40% matched</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="outline" size="sm" disabled className="flex items-center gap-1">
+                          <Eye className="h-4 w-4" />
+                          View Details
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+                
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-2">Analysis Features Available:</h4>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• <strong>Match Status:</strong> Automatic comparison between PO and quote line items</li>
+                    <li>• <strong>Price Analysis:</strong> Deviation detection and variance calculations</li>
+                    <li>• <strong>Line Item Details:</strong> Part number matching, quantity verification, and pricing comparisons</li>
+                    <li>• <strong>Status Tracking:</strong> Acceptance, rejection, and amendment requirements</li>
+                    <li>• <strong>Export Options:</strong> Generate reports and amendment lists</li>
+                    <li>• <strong>Commercial Terms:</strong> Payment terms, delivery dates, and warranty analysis</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Call to Action */}
+            <Card>
+              <CardContent className="text-center py-8">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to Start Analyzing?</h3>
+                <p className="text-gray-500 mb-4">
+                  Upload your first PO and quote to see detailed analysis results here.
+                </p>
+                <Button onClick={() => window.location.href = '/'} className="flex items-center gap-2 mx-auto">
+                  <FileText className="h-4 w-4" />
+                  Upload & Analyze Documents
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>
