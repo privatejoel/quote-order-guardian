@@ -20,17 +20,19 @@ export const Header = () => {
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">PO-Quote Validator</h1>
-          <p className="text-sm text-gray-600">Document Analysis Tool</p>
-        </div>
+        <Link to="/">
+          <div className="cursor-pointer">
+            <h1 className="text-2xl font-bold text-gray-900">PO-Quote Validator</h1>
+            <p className="text-sm text-gray-600">Document Analysis Tool</p>
+          </div>
+        </Link>
         
         {user && (
           <div className="flex items-center gap-4">
             <nav className="flex items-center gap-2">
-              <Link to="/">
+              <Link to="/app">
                 <Button 
-                  variant={location.pathname === '/' ? 'default' : 'ghost'} 
+                  variant={location.pathname === '/app' ? 'default' : 'ghost'} 
                   size="sm"
                   className="flex items-center gap-2"
                 >

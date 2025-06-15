@@ -355,7 +355,7 @@ const ProcessedPOs = () => {
                 <p className="text-gray-500 mb-4">
                   Upload your first PO and quote to see detailed analysis results here.
                 </p>
-                <Button onClick={() => window.location.href = '/'} className="flex items-center gap-2 mx-auto">
+                <Button onClick={() => window.location.href = '/app'} className="flex items-center gap-2 mx-auto">
                   <FileText className="h-4 w-4" />
                   Upload & Analyze Documents
                 </Button>
