@@ -1,11 +1,13 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, FileText, Upload } from 'lucide-react';
 import { useAuth } from './auth/AuthProvider';
+import { Link, useLocation } from 'react-router-dom';
 
 export const Header = () => {
   const { user, signOut } = useAuth();
+  const location = useLocation();
 
   const handleSignOut = async () => {
     try {
@@ -25,6 +27,29 @@ export const Header = () => {
         
         {user && (
           <div className="flex items-center gap-4">
+            <nav className="flex items-center gap-2">
+              <Link to="/">
+                <Button 
+                  variant={location.pathname === '/' ? 'default' : 'ghost'} 
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Upload & Analyze
+                </Button>
+              </Link>
+              <Link to="/processed-pos">
+                <Button 
+                  variant={location.pathname === '/processed-pos' ? 'default' : 'ghost'} 
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Processed POs
+                </Button>
+              </Link>
+            </nav>
+            
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <User className="h-4 w-4" />
               {user.email}
