@@ -1,5 +1,7 @@
+import * as pdfjsLib from 'pdfjs-dist';
 
-import pdf from 'pdf-parse';
+// Set up the worker for pdfjs
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
 export interface ParsedPOData {
   poNumber: string;
@@ -47,23 +49,33 @@ export interface QuoteLineItem {
 export const parsePOPdf = async (file: File): Promise<ParsedPOData> => {
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const data = await pdf(buffer);
-    const text = data.text;
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    let fullText = '';
+    
+    // Extract text from all pages
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      fullText += pageText + '\n';
+    }
 
-    console.log('PO PDF Text:', text);
+    console.log('PO PDF Text:', fullText);
 
     // Extract PO data using regex patterns
-    const poNumber = extractPoNumber(text);
-    const customerName = extractCustomerName(text);
-    const customerCode = extractCustomerCode(text);
-    const poReceivedDate = extractPoDate(text);
-    const paymentTerms = extractPaymentTerms(text);
-    const deliveryMode = extractDeliveryMode(text);
-    const requestedDeliveryDate = extractDeliveryDate(text);
-    const incoterms = extractIncoterms(text);
-    const warrantyTerms = extractWarrantyTerms(text);
-    const lineItems = extractPOLineItems(text);
+    const poNumber = extractPoNumber(fullText);
+    const customerName = extractCustomerName(fullText);
+    const customerCode = extractCustomerCode(fullText);
+    const poReceivedDate = extractPoDate(fullText);
+    const paymentTerms = extractPaymentTerms(fullText);
+    const deliveryMode = extractDeliveryMode(fullText);
+    const requestedDeliveryDate = extractDeliveryDate(fullText);
+    const incoterms = extractIncoterms(fullText);
+    const warrantyTerms = extractWarrantyTerms(fullText);
+    const lineItems = extractPOLineItems(fullText);
 
     return {
       poNumber: poNumber || `PO-${Date.now()}`,
@@ -86,21 +98,31 @@ export const parsePOPdf = async (file: File): Promise<ParsedPOData> => {
 export const parseQuotePdf = async (file: File): Promise<ParsedQuoteData> => {
   try {
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const data = await pdf(buffer);
-    const text = data.text;
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    let fullText = '';
+    
+    // Extract text from all pages
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      fullText += pageText + '\n';
+    }
 
-    console.log('Quote PDF Text:', text);
+    console.log('Quote PDF Text:', fullText);
 
     // Extract Quote data using regex patterns
-    const quoteNumber = extractQuoteNumber(text);
-    const customerName = extractCustomerName(text);
-    const customerCode = extractCustomerCode(text);
-    const quoteDate = extractQuoteDate(text);
-    const paymentTerms = extractPaymentTerms(text);
-    const deliveryTerms = extractDeliveryTerms(text);
-    const warrantyTerms = extractWarrantyTerms(text);
-    const lineItems = extractQuoteLineItems(text);
+    const quoteNumber = extractQuoteNumber(fullText);
+    const customerName = extractCustomerName(fullText);
+    const customerCode = extractCustomerCode(fullText);
+    const quoteDate = extractQuoteDate(fullText);
+    const paymentTerms = extractPaymentTerms(fullText);
+    const deliveryTerms = extractDeliveryTerms(fullText);
+    const warrantyTerms = extractWarrantyTerms(fullText);
+    const lineItems = extractQuoteLineItems(fullText);
 
     return {
       quoteNumber: quoteNumber || `QT-${Date.now()}`,
