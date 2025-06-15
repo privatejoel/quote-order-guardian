@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, FileText, Upload } from 'lucide-react';
+import { LogOut, User, FileText, Upload, Home } from 'lucide-react';
 import { useAuth } from './auth/AuthProvider';
 import { Link, useLocation } from 'react-router-dom';
 
@@ -27,7 +27,7 @@ export const Header = () => {
           </div>
         </Link>
         
-        {user && (
+        {user ? (
           <div className="flex items-center gap-4">
             <nav className="flex items-center gap-2">
               <Link to="/app">
@@ -66,6 +66,29 @@ export const Header = () => {
               Sign Out
             </Button>
           </div>
+        ) : (
+          <nav className="flex items-center gap-2">
+            <Link to="/">
+              <Button 
+                variant={location.pathname === '/' ? 'default' : 'ghost'} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Home className="h-4 w-4" />
+                Home
+              </Button>
+            </Link>
+            <Link to="/app">
+              <Button 
+                variant={location.pathname === '/app' ? 'default' : 'ghost'} 
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Get Started
+              </Button>
+            </Link>
+          </nav>
         )}
       </div>
     </header>
